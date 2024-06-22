@@ -4,6 +4,8 @@
 import mlx.core as mx
 import mlx.nn as nn
 import mlx.optimizers as optim
+import matplotlib.pyplot as plt
+import numpy as np
 
 # 4 examples with 10 features each
 x = mx.random.uniform(shape=(4, 10))
@@ -33,7 +35,22 @@ def loss_fn(model, x, y):
 loss_and_grad_fn = nn.value_and_grad(model, loss_fn)
 
 # 10 steps for SGD
+losses_per_step = []
 for _ in range(10):
     loss, grads = loss_and_grad_fn(model, x, y_dis)
     optimizer.update(model, grads)
     mx.eval(model.parameters(), optimizer.state)
+
+#    np_loss = np.array(loss)
+#    print(type(np_loss))
+#    print(np_loss[0])
+
+    # 0-dimension array
+    #  print(type(loss.item()))
+    losses_per_step.append(loss.item())
+
+
+plt.plot(losses_per_step, marker='o')
+plt.xlabel('Step')
+plt.ylabel('Loss')
+plt.show()
