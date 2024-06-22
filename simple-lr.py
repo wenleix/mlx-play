@@ -7,6 +7,8 @@ import mlx.optimizers as optim
 import matplotlib.pyplot as plt
 import numpy as np
 
+mx.random.seed(42 ** 3)
+
 # 4 examples with 10 features each
 x = mx.random.uniform(shape=(4, 10))
 
@@ -36,7 +38,7 @@ loss_and_grad_fn = nn.value_and_grad(model, loss_fn)
 
 # 10 steps for SGD
 losses_per_step = []
-for _ in range(10):
+for _ in range(50):
     loss, grads = loss_and_grad_fn(model, x, y_dis)
     optimizer.update(model, grads)
     mx.eval(model.parameters(), optimizer.state)
@@ -54,3 +56,7 @@ plt.plot(losses_per_step, marker='o')
 plt.xlabel('Step')
 plt.ylabel('Loss')
 plt.show()
+
+print(model.parameters())
+print(model(x).squeeze())
+print(y_dis)
