@@ -93,6 +93,10 @@ def main():
     optimizer = optim.SGD(learning_rate=LEARNING_RATE)
     loss_and_grad_fn = nn.value_and_grad(model, loss_fn)
 
+    def accuracy():
+        test_preds = mx.argmax(model(test_images), axis=1)
+        return mx.mean(test_preds == test_labels)
+
     for e in range(NUM_EPOCHS):
         tic = time.perf_counter()
         loss = None
@@ -102,13 +106,14 @@ def main():
             optimizer.update(model, grads)
             mx.eval(model.state)
 
+            # print(f"Epoch {e + 1}/{NUM_EPOCHS}, Loss: {loss.item()}, Accuracy: {accuracy().item() * 100:.2f}%")
+
+
         # evalute the model a after each epoch
         # do inference on test data
-        test_preds = mx.argmax(model(test_images), axis=1)
-        accuracy = mx.mean(test_preds == test_labels)
         toc = time.perf_counter()
 
-        print(f"Epoch {e + 1}/{NUM_EPOCHS}, Loss: {loss.item()}, Accuracy: {accuracy.item() * 100:.2f}%, Time: {toc - tic:.2f}s")
+        print(f"Epoch {e + 1}/{NUM_EPOCHS}, Loss: {loss.item()}, Accuracy: {accuracy().item() * 100:.2f}%, Time: {toc - tic:.2f}s")
 
 
 
