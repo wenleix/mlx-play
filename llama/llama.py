@@ -28,7 +28,7 @@ class LlamaAttention(nn.Modlule):
         # Extra shapes
         num_heads = self.num_heads
         # B: Batch size; D: hidden dimension * num_heads
-        # L: sequence length
+        # L: sequence length (e.g. context length)
         B, L, D = queries.shape
 
 
@@ -67,4 +67,54 @@ class LlamaAttention(nn.Modlule):
         return self.out_proj(values_hat), (keys, values)
 
 
+
+class LlamaEncoderLayer(nn.Module):
+    # I do think "TransformerBlock" is a better name
+    def __init__(self, dims: int, mlp_dims: int, num_heads: int):
+        super().__init__()
+
+        self.attention = LlamaAttention(dims, num_heads)
+
+        self.norm1 = nn.RMSNorm(dims)
+        self.norm2 = nn.RMSNorm(dims)
+
+        self.linear1 = nn.Linear(dims, mlp_dims, bias=False)
+        self.linear2 = nn.Linear(dims, mlp_dims, bias=False)
+        self.linear3 = nn.Linear(mlp_dims, dims, bias=False)
+
+    def __call__(self, x, mask=None, cache=None):
+        y = self.norm1(x)
+        # i guess "y, y, y" is because of the self-attention
+        y, cache = self.attention(y, y, y, mask, cache)
+
+        # OK i don't understand how add norm and feed forward works, but that's fine.
+        # also i guess https://github.com/ml-explore/mlx-examples/blob/main/llms/llama/llama.py#L120-L122 it's an easier way to read
+        x = x + y
+        y = self.norm2(x)
+        a = self.linear1(y)
+        b = self.linear2(y)
+        y = a * mx.sigmoid(a) * b
+        y = self.linear3(y)
+        x = x + y
+
+        return x, cache
+
+class Llama(nn.Module):
+    def __init__(self, num_layers: int, vocab_size: int, dims: int, mlp_dims: int, num_heads: int):
+        super().__init__()
+
+        self.embedding = nn.Embedding(vocab_size, dims)
+        self.layers = nn.Sequential(*[LlamaEncoderLayer(dims, mlp_dims, num_heads) for _ in range(num_layers)])
+        self.norm = nn.RMSNorm(dims)
+        self.out_proj = nn.Linear(dims, vocab_size, bias=False)
+
+    def __call__(self, x):
+        mask = nn.MultiHeadAttention.create_additive_causal_mask(x.shape[1])
+        mask = mask.astype(self.embedding.weight.dtype)
+
+        x = self.embedding(x)
+        for l in self.layers:
+            x, _ = l(x, mask=mask)
+        x = self.norm(x)
+        return self.out_proj(x)
 
